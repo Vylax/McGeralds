@@ -109,7 +109,7 @@ namespace KinematicCharacterController
             }
             private set
             {
-                _internalTransientPosition = value.normalized;
+                _internalTransientPosition = value;
             }
         }
 
@@ -125,7 +125,7 @@ namespace KinematicCharacterController
             }
             private set
             {
-                _internalTransientRotation = value;
+                _internalTransientRotation = value.normalized;
             }
         }
 
