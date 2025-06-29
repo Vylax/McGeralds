@@ -265,11 +265,19 @@ public class PlayerInteraction : MonoBehaviour
         {
             if (isLookingAtNPC && npcTrigger != null)
             {
-                // Handle NPC interaction
+                // Handle NPC interaction (dialogue always plays)
                 string dialogueToUse = GetNPCDialogue(npcTrigger);
                 if (npcTrigger.npcToTalkTo != null)
                 {
                     npcTrigger.npcToTalkTo.Talk(dialogueToUse, npcTrigger.voiceLine);
+                }
+                
+                // Check if this is the manager NPC for objective completion
+                ManagerNPC managerNPC = npcTrigger.GetComponent<ManagerNPC>();
+                if (managerNPC != null)
+                {
+                    // Handle manager objective completion
+                    managerNPC.OnPlayerTalkToManager();
                 }
             }
             else if (isLookingAtGrabbable)

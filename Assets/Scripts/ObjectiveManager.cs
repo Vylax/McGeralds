@@ -19,6 +19,10 @@ public class ObjectiveManager : MonoBehaviour
     [Header("Objective State")]
     [Tooltip("The current active objective asset.")]
     public Objective currentObjective;
+    
+    [Header("Initial Objective")]
+    [Tooltip("The first objective to load when the game starts.")]
+    public Objective initialObjective;
 
     [Header("Visualizer Settings")]
     [Tooltip("The height of the cylindrical force field.")]
@@ -80,6 +84,13 @@ public class ObjectiveManager : MonoBehaviour
         // Initially hide both visuals
         visualizerInstance.SetActive(false);
         directionIndicator.gameObject.SetActive(false);
+
+        // Load initial objective if no current objective is set
+        if (currentObjective == null && initialObjective != null)
+        {
+            currentObjective = initialObjective;
+            Debug.Log($"Loaded initial objective: {currentObjective.objectiveName}");
+        }
 
         if (currentObjective != null)
         {

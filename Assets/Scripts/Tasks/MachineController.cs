@@ -17,16 +17,28 @@ public class MachineController : MonoBehaviour
     /// </summary>
     void Start()
     {
-        // Disable all child mesh renderers at the start and count the total number of pieces.
-        _totalPieces = transform.childCount;
-        for (int i = 0; i < _totalPieces; i++)
-        {
-            MeshRenderer pieceRenderer = transform.GetChild(i).GetComponent<MeshRenderer>();
-            if (pieceRenderer != null)
-            {
-                pieceRenderer.enabled = false;
-            }
-        }
+        // Count the total number of pieces (but don't disable them yet - wait for manager interaction)
+        _totalPieces = 13;
+        
+        // Initially disable any particle systems (they should only be active when machine is broken)
+        DisableAllParticleSystems(transform);
+    }
+    
+    /// <summary>
+    /// Call this method to break the machine (disable all mesh renderers)
+    /// This should be called when the manager objective is completed
+    /// </summary>
+    public void BreakMachine()
+    {
+        Debug.Log($"BreakMachine() called! Total pieces: {_totalPieces}");
+        
+        // Disable the main machine mesh renderer and all its children
+        DisableAllMeshRenderers(transform);
+        
+        // Enable particle systems (smoke, sparks, etc. for broken machine effect)
+        EnableAllParticleSystems(transform);
+        
+        Debug.Log("Machine broken! All mesh renderers disabled and particle systems enabled.");
     }
 
     /// <summary>
@@ -49,12 +61,8 @@ public class MachineController : MonoBehaviour
 
             if (pieceToEnable != null)
             {
-                // Enable the mesh renderer of the corresponding piece on the machine.
-                MeshRenderer pieceRenderer = pieceToEnable.GetComponent<MeshRenderer>();
-                if (pieceRenderer != null)
-                {
-                    pieceRenderer.enabled = true;
-                }
+                // Enable the mesh renderer of the corresponding piece and all its children
+                EnableAllMeshRenderers(pieceToEnable);
 
                 // Destroy the piece the player just placed.
                 Destroy(other.gameObject);
@@ -90,7 +98,9 @@ public class MachineController : MonoBehaviour
     {
         // Add your logic here for when the machine is fully repaired.
         Debug.Log("🎉 Machine repair complete! 🎉");
-        // For example, you could play an animation, show a UI message, or start the next quest.
+        
+        // Disable particle systems (machine is no longer broken)
+        DisableAllParticleSystems(transform);
         
         // Optional: Mark objective as complete if using ObjectiveManager
         if (updateObjectiveProgress && ObjectiveManager.Instance != null)
@@ -114,5 +124,86 @@ public class MachineController : MonoBehaviour
     public string GetProgressText()
     {
         return $"{_piecesPlaced}/{_totalPieces}";
+    }
+    
+    /// <summary>
+    /// Recursively disables all mesh renderers in a transform hierarchy
+    /// </summary>
+    private void DisableAllMeshRenderers(Transform parent)
+    {
+        // Disable mesh renderer on the parent if it exists
+        MeshRenderer renderer = parent.GetComponent<MeshRenderer>();
+        if (renderer != null)
+        {
+            renderer.enabled = false;
+            Debug.Log($"Disabled renderer on: {parent.name}");
+        }
+        
+        // Recursively disable mesh renderers on all children
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            DisableAllMeshRenderers(parent.GetChild(i));
+        }
+    }
+    
+    /// <summary>
+    /// Recursively enables all mesh renderers in a transform hierarchy
+    /// </summary>
+    private void EnableAllMeshRenderers(Transform parent)
+    {
+        // Enable mesh renderer on the parent if it exists
+        MeshRenderer renderer = parent.GetComponent<MeshRenderer>();
+        if (renderer != null)
+        {
+            renderer.enabled = true;
+            Debug.Log($"Enabled renderer on: {parent.name}");
+        }
+        
+        // Recursively enable mesh renderers on all children
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            EnableAllMeshRenderers(parent.GetChild(i));
+        }
+    }
+    
+    /// <summary>
+    /// Recursively disables all particle systems in a transform hierarchy
+    /// </summary>
+    private void DisableAllParticleSystems(Transform parent)
+    {
+        // Disable particle system on the parent if it exists
+        ParticleSystem particles = parent.GetComponent<ParticleSystem>();
+        if (particles != null)
+        {
+            particles.gameObject.SetActive(false);
+            Debug.Log($"Disabled particle system on: {parent.name}");
+        }
+        
+        // Recursively disable particle systems on all children
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            DisableAllParticleSystems(parent.GetChild(i));
+        }
+    }
+    
+    /// <summary>
+    /// Recursively enables all particle systems in a transform hierarchy
+    /// </summary>
+    private void EnableAllParticleSystems(Transform parent)
+    {
+        // Enable particle system on the parent if it exists
+        ParticleSystem particles = parent.GetComponent<ParticleSystem>();
+        if (particles != null)
+        {
+            particles.gameObject.SetActive(true);
+            particles.Play();
+            Debug.Log($"Enabled and started particle system on: {parent.name}");
+        }
+        
+        // Recursively enable particle systems on all children
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            EnableAllParticleSystems(parent.GetChild(i));
+        }
     }
 }
