@@ -236,7 +236,7 @@ public class PlayerInteraction : MonoBehaviour
         RaycastHit hit;
         bool hitSomething = Physics.Raycast(mainCamera.transform.position, mainCamera.transform.forward, out hit, interactionDistance);
         
-        // Check for NPC first (priority over grabbable objects)
+        // Check for NPC first (highest priority)
         NPCTrigger npcTrigger = null;
         bool isLookingAtNPC = false;
         if (hitSomething)
@@ -245,19 +245,28 @@ public class PlayerInteraction : MonoBehaviour
             isLookingAtNPC = npcTrigger != null;
         }
         
-        // Check for grabbable object (only if not looking at NPC)
-        bool isLookingAtGrabbable = false;
+        // Check for interactable object (second priority, only if not looking at NPC)
+        InteractableObject interactableObject = null;
+        bool isLookingAtInteractable = false;
         if (hitSomething && !isLookingAtNPC)
+        {
+            interactableObject = hit.collider.GetComponent<InteractableObject>();
+            isLookingAtInteractable = interactableObject != null;
+        }
+        
+        // Check for grabbable object (lowest priority, only if not looking at NPC or interactable)
+        bool isLookingAtGrabbable = false;
+        if (hitSomething && !isLookingAtNPC && !isLookingAtInteractable)
         {
             isLookingAtGrabbable = hit.collider.attachedRigidbody != null
                                    && !hit.collider.CompareTag("Player")
                                    && !hit.collider.CompareTag("Map");
         }
 
-        // Show interaction prompt if looking at either NPC or grabbable object
+        // Show interaction prompt if looking at NPC, interactable object, or grabbable object
         if (interactionPrompt != null)
         {
-            interactionPrompt.gameObject.SetActive(isLookingAtNPC || isLookingAtGrabbable);
+            interactionPrompt.gameObject.SetActive(isLookingAtNPC || isLookingAtInteractable || isLookingAtGrabbable);
         }
 
         // Handle interactions when interact key is pressed
@@ -279,6 +288,11 @@ public class PlayerInteraction : MonoBehaviour
                     // Handle manager objective completion
                     managerNPC.OnPlayerTalkToManager();
                 }
+            }
+            else if (isLookingAtInteractable && interactableObject != null)
+            {
+                // Handle interactable object interaction
+                interactableObject.OnPlayerInteract();
             }
             else if (isLookingAtGrabbable)
             {

@@ -206,6 +206,22 @@ public class ObjectiveManager : MonoBehaviour
             return;
         }
 
+        // Hide direction indicator and area visualizer for the final "GG" objective
+        if (currentObjective.objectiveName == "GG")
+        {
+            if (directionIndicator.gameObject.activeSelf) 
+            {
+                directionIndicator.gameObject.SetActive(false);
+                Debug.Log("🏆 ObjectiveManager: Direction indicator hidden for final GG objective!");
+            }
+            if (visualizerInstance.activeSelf)
+            {
+                visualizerInstance.SetActive(false);
+                Debug.Log("🏆 ObjectiveManager: Area visualizer hidden for final GG objective!");
+            }
+            return;
+        }
+
         float distanceToObjective = Vector3.Distance(playerTransform.position, currentObjective.worldPosition);
 
         if (distanceToObjective <= currentObjective.areaRadius)

@@ -8,6 +8,9 @@ public class MachineController : MonoBehaviour
     [Header("Objective Integration")]
     [Tooltip("Should this machine update the current objective progress?")]
     [SerializeField] private bool updateObjectiveProgress = true;
+    
+    [Tooltip("The next objective to switch to after machine repair is complete")]
+    [SerializeField] private Objective nextObjective;
 
     private int _totalPieces;
     private int _piecesPlaced = 0;
@@ -102,11 +105,18 @@ public class MachineController : MonoBehaviour
         // Disable particle systems (machine is no longer broken)
         DisableAllParticleSystems(transform);
         
-        // Optional: Mark objective as complete if using ObjectiveManager
+        // Optional: Mark objective as complete and switch to next objective
         if (updateObjectiveProgress && ObjectiveManager.Instance != null)
         {
             // Ensure the objective progress is set to the target (in case of any discrepancies)
             ObjectiveManager.Instance.SetObjectiveProgress(_totalPieces);
+            
+            // Switch to the next objective if specified
+            if (nextObjective != null)
+            {
+                Debug.Log($"Switching to next objective: {nextObjective.objectiveName}");
+                ObjectiveManager.Instance.SetNewObjective(nextObjective);
+            }
         }
     }
 
