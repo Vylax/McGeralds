@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 using KinematicCharacterController.Examples;
 
 public class PlayerInteraction : MonoBehaviour
@@ -19,6 +20,9 @@ public class PlayerInteraction : MonoBehaviour
     [Header("UI Settings")]
     [SerializeField] private Image interactionPrompt;
 
+    [Header("Input Settings")]
+    [SerializeField] private InputActionAsset inputActions;
+
     private Rigidbody heldObject;
     private Camera mainCamera;
     private bool isRotatingObject = false;
@@ -26,9 +30,18 @@ public class PlayerInteraction : MonoBehaviour
     // References to camera and character controllers
     private ExampleCharacterCamera cameraController;
     private ExampleCharacterController characterController;
+    
+    // Input Actions
+    private InputAction interactAction;
+    private InputAction attackAction;
+    private InputAction lookAction;
+    private InputAction rotateObjectAction;
 
     void Start()
     {
+        // Initialize Input System
+        SetupInputActions();
+        
         // Use Camera.main to find the primary camera in the scene
         mainCamera = Camera.main;
         if (interactionPrompt != null)
@@ -69,6 +82,56 @@ public class PlayerInteraction : MonoBehaviour
         }
     }
 
+    void SetupInputActions()
+    {
+        // Load the Input Actions asset if not assigned
+        if (inputActions == null)
+        {
+            inputActions = Resources.Load<InputActionAsset>("InputSystem_Actions");
+            if (inputActions == null)
+            {
+                Debug.LogError("InputSystem_Actions asset not found! Please assign it in the inspector or place it in a Resources folder.");
+                return;
+            }
+        }
+        
+        // Get the Player action map
+        var playerActionMap = inputActions.FindActionMap("Player");
+        if (playerActionMap == null)
+        {
+            Debug.LogError("Player action map not found!");
+            return;
+        }
+        
+        // Initialize individual actions
+        interactAction = playerActionMap.FindAction("Interact");
+        attackAction = playerActionMap.FindAction("Attack");
+        lookAction = playerActionMap.FindAction("Look");
+        rotateObjectAction = playerActionMap.FindAction("RotateObject");
+        
+        // Log warnings for missing actions
+        if (interactAction == null) Debug.LogError("Interact action not found!");
+        if (attackAction == null) Debug.LogError("Attack action not found!");
+        if (lookAction == null) Debug.LogError("Look action not found!");
+        if (rotateObjectAction == null) Debug.LogError("RotateObject action not found!");
+    }
+
+    void OnEnable()
+    {
+        interactAction?.Enable();
+        attackAction?.Enable();
+        lookAction?.Enable();
+        rotateObjectAction?.Enable();
+    }
+
+    void OnDisable()
+    {
+        interactAction?.Disable();
+        attackAction?.Disable();
+        lookAction?.Disable();
+        rotateObjectAction?.Disable();
+    }
+
     void Update()
     {
         // --- 1. IF WE ARE HOLDING AN OBJECT ---
@@ -100,28 +163,28 @@ public class PlayerInteraction : MonoBehaviour
     /// </summary>
     private void HandleHeldObjectInputs()
     {
-        // Press E to drop
-        if (Input.GetKeyDown(KeyCode.E))
+        // Press E (Interact) to drop
+        if (interactAction != null && interactAction.WasPressedThisFrame())
         {
             DropObject();
             return;
         }
 
-        // Left-click to throw
-        if (Input.GetMouseButtonDown(0))
+        // Left-click (Attack) to throw
+        if (attackAction != null && attackAction.WasPressedThisFrame())
         {
             ThrowObject();
             return;
         }
 
         // Right-click to start rotating
-        if (Input.GetMouseButtonDown(1))
+        if (rotateObjectAction != null && rotateObjectAction.WasPressedThisFrame())
         {
             isRotatingObject = true;
             ToggleCameraRotation(false); // Disable camera look
         }
         // Right-click release to stop rotating
-        if (Input.GetMouseButtonUp(1))
+        if (rotateObjectAction != null && rotateObjectAction.WasReleasedThisFrame())
         {
             isRotatingObject = false;
             ToggleCameraRotation(true); // Re-enable camera look
@@ -143,7 +206,7 @@ public class PlayerInteraction : MonoBehaviour
             interactionPrompt.gameObject.SetActive(isLookingAtGrabbable);
         }
 
-        if (isLookingAtGrabbable && Input.GetKeyDown(KeyCode.E))
+        if (isLookingAtGrabbable && interactAction != null && interactAction.WasPressedThisFrame())
         {
             TryGrabObject(hit);
         }
@@ -196,15 +259,19 @@ public class PlayerInteraction : MonoBehaviour
 
     private void RotateHeldObject()
     {
-        // Get mouse movement
-        float mouseX = Input.GetAxis("Mouse X") * rotationSpeed;
-        float mouseY = Input.GetAxis("Mouse Y") * rotationSpeed;
+        // Get mouse movement from the Look action
+        if (lookAction != null)
+        {
+            Vector2 lookInput = lookAction.ReadValue<Vector2>();
+            float mouseX = lookInput.x * rotationSpeed * Time.fixedDeltaTime;
+            float mouseY = lookInput.y * rotationSpeed * Time.fixedDeltaTime;
 
-        // Apply torque based on camera's orientation
-        // Rotate around camera's up axis for horizontal movement
-        heldObject.AddTorque(mainCamera.transform.up * mouseX, ForceMode.VelocityChange);
-        // Rotate around camera's right axis for vertical movement
-        heldObject.AddTorque(-mainCamera.transform.right * mouseY, ForceMode.VelocityChange);
+            // Apply torque based on camera's orientation
+            // Rotate around camera's up axis for horizontal movement
+            heldObject.AddTorque(mainCamera.transform.up * mouseX, ForceMode.VelocityChange);
+            // Rotate around camera's right axis for vertical movement
+            heldObject.AddTorque(-mainCamera.transform.right * mouseY, ForceMode.VelocityChange);
+        }
     }
 
     /// <summary>
