@@ -28,9 +28,25 @@ public class ObjectiveManager : MonoBehaviour
     [Tooltip("How far from the screen edge the arrow will be.")]
     public float indicatorPadding = 75f;
 
+    [Header("GUI Settings")]
+    [Tooltip("Font size for the objective name.")]
+    public int objectiveNameFontSize = 24;
+    
+    [Tooltip("Font size for the objective description.")]
+    public int objectiveDescriptionFontSize = 16;
+    
+    [Tooltip("Background color for the objective display.")]
+    public Color guiBackgroundColor = new Color(0f, 0f, 0f, 0.7f);
+    
+    [Tooltip("Text color for the objective display.")]
+    public Color guiTextColor = Color.white;
+
     // --- Private instance variables ---
     private GameObject visualizerInstance;
     private Renderer visualizerRenderer;
+    private GUIStyle objectiveNameStyle;
+    private GUIStyle objectiveDescriptionStyle;
+    private GUIStyle backgroundStyle;
 
     void Start()
     {
@@ -62,6 +78,71 @@ public class ObjectiveManager : MonoBehaviour
         {
             SetupObjectiveVisuals();
         }
+
+        // Initialize GUI styles
+        InitializeGUIStyles();
+    }
+
+    void InitializeGUIStyles()
+    {
+        // Create styles for GUI display
+        objectiveNameStyle = new GUIStyle();
+        objectiveNameStyle.fontSize = objectiveNameFontSize;
+        objectiveNameStyle.normal.textColor = guiTextColor;
+        objectiveNameStyle.fontStyle = FontStyle.Bold;
+        objectiveNameStyle.alignment = TextAnchor.UpperLeft;
+        objectiveNameStyle.wordWrap = true;
+
+        objectiveDescriptionStyle = new GUIStyle();
+        objectiveDescriptionStyle.fontSize = objectiveDescriptionFontSize;
+        objectiveDescriptionStyle.normal.textColor = guiTextColor;
+        objectiveDescriptionStyle.fontStyle = FontStyle.Normal;
+        objectiveDescriptionStyle.alignment = TextAnchor.UpperLeft;
+        objectiveDescriptionStyle.wordWrap = true;
+
+        backgroundStyle = new GUIStyle();
+        backgroundStyle.normal.background = CreateColorTexture(guiBackgroundColor);
+    }
+
+    private Texture2D CreateColorTexture(Color color)
+    {
+        Texture2D texture = new Texture2D(1, 1);
+        texture.SetPixel(0, 0, color);
+        texture.Apply();
+        return texture;
+    }
+
+    void OnGUI()
+    {
+        if (currentObjective == null) return;
+
+        // Calculate content dimensions
+        float padding = 15f;
+        float maxWidth = Screen.width * 0.4f; // Max 40% of screen width
+        float lineSpacing = 5f;
+
+        // Calculate text dimensions
+        GUIContent nameContent = new GUIContent(currentObjective.objectiveName);
+        GUIContent descContent = new GUIContent(currentObjective.description);
+
+        float nameHeight = objectiveNameStyle.CalcHeight(nameContent, maxWidth);
+        float descHeight = objectiveDescriptionStyle.CalcHeight(descContent, maxWidth);
+
+        // Calculate total box dimensions
+        float totalWidth = maxWidth + (padding * 2);
+        float totalHeight = nameHeight + descHeight + lineSpacing + (padding * 2);
+
+        // Draw background box
+        Rect backgroundRect = new Rect(10, 10, totalWidth, totalHeight);
+        GUI.Box(backgroundRect, "", backgroundStyle);
+
+        // Draw objective name
+        Rect nameRect = new Rect(10 + padding, 10 + padding, maxWidth, nameHeight);
+        GUI.Label(nameRect, nameContent, objectiveNameStyle);
+
+        // Draw objective description
+        Rect descRect = new Rect(10 + padding, 10 + padding + nameHeight + lineSpacing, maxWidth, descHeight);
+        GUI.Label(descRect, descContent, objectiveDescriptionStyle);
     }
 
     void Update()
