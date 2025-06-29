@@ -199,7 +199,8 @@ public class PlayerInteraction : MonoBehaviour
         RaycastHit hit;
         bool isLookingAtGrabbable = Physics.Raycast(mainCamera.transform.position, mainCamera.transform.forward, out hit, interactionDistance)
                                      && hit.collider.attachedRigidbody != null
-                                     && !hit.collider.CompareTag("Player");
+                                     && !hit.collider.CompareTag("Player")
+                                     && !hit.collider.CompareTag("Map");
 
         if (interactionPrompt != null)
         {
