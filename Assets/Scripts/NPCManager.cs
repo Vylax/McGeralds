@@ -36,6 +36,11 @@ public class NPCManager : MonoBehaviour
         }
     }
 
+    void Start()
+    {
+        StartSpawning();
+    }
+
     // Call this method to begin the spawning process
     public void StartSpawning()
     {

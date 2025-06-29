@@ -134,6 +134,12 @@ public class PlayerInteraction : MonoBehaviour
 
     void Update()
     {
+        // --- SAFETY CHECK: If held object was destroyed externally, clean up ---
+        if (heldObject != null && heldObject.gameObject == null)
+        {
+            CleanupHeldObject();
+        }
+
         // --- 1. IF WE ARE HOLDING AN OBJECT ---
         if (heldObject != null)
         {
@@ -148,6 +154,13 @@ public class PlayerInteraction : MonoBehaviour
 
     void FixedUpdate()
     {
+        // --- SAFETY CHECK: Ensure held object still exists ---
+        if (heldObject != null && heldObject.gameObject == null)
+        {
+            CleanupHeldObject();
+            return;
+        }
+
         if (heldObject != null)
         {
             MoveHeldObject();
@@ -155,6 +168,29 @@ public class PlayerInteraction : MonoBehaviour
             {
                 RotateHeldObject();
             }
+        }
+    }
+
+    /// <summary>
+    /// Cleans up the held object reference when it has been destroyed externally.
+    /// </summary>
+    private void CleanupHeldObject()
+    {
+        Debug.Log("Held object was destroyed externally. Cleaning up references.");
+        
+        // If we were rotating, make sure to re-enable the camera
+        if (isRotatingObject)
+        {
+            isRotatingObject = false;
+            ToggleCameraRotation(true);
+        }
+
+        heldObject = null;
+        
+        // Hide interaction prompt if it's showing
+        if (interactionPrompt != null)
+        {
+            interactionPrompt.gameObject.SetActive(false);
         }
     }
 
@@ -192,24 +228,107 @@ public class PlayerInteraction : MonoBehaviour
     }
 
     /// <summary>
-    /// Checks if the player is looking at a grabbable object and handles grabbing.
+    /// Checks if the player is looking at an NPC or grabbable object and handles interactions.
+    /// NPCs take priority over grabbable objects.
     /// </summary>
     private void CheckForGrabbableObject()
     {
         RaycastHit hit;
-        bool isLookingAtGrabbable = Physics.Raycast(mainCamera.transform.position, mainCamera.transform.forward, out hit, interactionDistance)
-                                     && hit.collider.attachedRigidbody != null
-                                     && !hit.collider.CompareTag("Player")
-                                     && !hit.collider.CompareTag("Map");
-
-        if (interactionPrompt != null)
+        bool hitSomething = Physics.Raycast(mainCamera.transform.position, mainCamera.transform.forward, out hit, interactionDistance);
+        
+        // Check for NPC first (priority over grabbable objects)
+        NPCTrigger npcTrigger = null;
+        bool isLookingAtNPC = false;
+        if (hitSomething)
         {
-            interactionPrompt.gameObject.SetActive(isLookingAtGrabbable);
+            npcTrigger = hit.collider.GetComponent<NPCTrigger>();
+            isLookingAtNPC = npcTrigger != null;
+        }
+        
+        // Check for grabbable object (only if not looking at NPC)
+        bool isLookingAtGrabbable = false;
+        if (hitSomething && !isLookingAtNPC)
+        {
+            isLookingAtGrabbable = hit.collider.attachedRigidbody != null
+                                   && !hit.collider.CompareTag("Player")
+                                   && !hit.collider.CompareTag("Map");
         }
 
-        if (isLookingAtGrabbable && interactAction != null && interactAction.WasPressedThisFrame())
+        // Show interaction prompt if looking at either NPC or grabbable object
+        if (interactionPrompt != null)
         {
-            TryGrabObject(hit);
+            interactionPrompt.gameObject.SetActive(isLookingAtNPC || isLookingAtGrabbable);
+        }
+
+        // Handle interactions when interact key is pressed
+        if (interactAction != null && interactAction.WasPressedThisFrame())
+        {
+            if (isLookingAtNPC && npcTrigger != null)
+            {
+                // Handle NPC interaction
+                string dialogueToUse = GetNPCDialogue(npcTrigger);
+                if (npcTrigger.npcToTalkTo != null)
+                {
+                    npcTrigger.npcToTalkTo.Talk(dialogueToUse, npcTrigger.voiceLine);
+                }
+            }
+            else if (isLookingAtGrabbable)
+            {
+                // Handle object grabbing
+                TryGrabObject(hit);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Gets the appropriate dialogue for an NPC based on their settings.
+    /// </summary>
+    private string GetNPCDialogue(NPCTrigger npcTrigger)
+    {
+        if (npcTrigger.useCustomDialogue)
+        {
+            return npcTrigger.dialogueLine;
+        }
+        else
+        {
+            // Use random dialogue from preset lines
+            string[] randomDialogueLines = {
+                "Why is the ice cream machine ALWAYS broken?!",
+                "I just want an ice cream, is that too much to ask?",
+                "Excuse me, is your ice cream machine working today?",
+                "I've been to 3 McGerald's and none of them have working ice cream!",
+                "Can I get a vanilla cone? Oh wait, let me guess... machine's broken?",
+                "I specifically came here for ice cream and now you tell me it's broken?",
+                "How hard is it to fix an ice cream machine? Seriously!",
+                "I'm never coming back here again! ...until tomorrow for ice cream.",
+                "Do you guys even TRY to fix the machine or just leave it broken?",
+                "I bet if I worked here I could fix that machine in 5 minutes!",
+                "My kid is crying because they want ice cream and your machine is broken AGAIN!",
+                "Is there a conspiracy against McGerald's ice cream or something?",
+                "I drove 20 minutes just for an ice cream and you're telling me no?",
+                "Can't you just go to the store and buy some ice cream to sell?",
+                "I'm calling corporate about this broken machine situation!",
+                "Why don't you put a sign outside saying 'Ice Cream Machine Broken'?",
+                "I'll take anything cold... a frozen burger, I don't care anymore!",
+                "Is the machine actually broken or are you just too lazy to clean it?",
+                "I bet the ice cream machine at Burger Emperor works!",
+                "Can I speak to the manager about this ice cream situation?",
+                "I just want to know WHY it's always broken!",
+                "Do you have any ice cream in the back freezer I could buy?",
+                "I'm starting to think McGerald's ice cream is just a myth!",
+                "Next time I'm bringing my own ice cream to eat here!",
+                "How am I supposed to enjoy my fries without a McGerald's ice cream?!"
+            };
+            
+            if (randomDialogueLines.Length > 0)
+            {
+                int randomIndex = Random.Range(0, randomDialogueLines.Length);
+                return randomDialogueLines[randomIndex];
+            }
+            else
+            {
+                return "Hello there!"; // Fallback dialogue
+            }
         }
     }
 

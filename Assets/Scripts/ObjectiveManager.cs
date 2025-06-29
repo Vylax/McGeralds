@@ -35,17 +35,24 @@ public class ObjectiveManager : MonoBehaviour
     [Tooltip("Font size for the objective description.")]
     public int objectiveDescriptionFontSize = 16;
     
+    [Tooltip("Font size for the progress counter.")]
+    public int progressFontSize = 18;
+    
     [Tooltip("Background color for the objective display.")]
     public Color guiBackgroundColor = new Color(0f, 0f, 0f, 0.7f);
     
     [Tooltip("Text color for the objective display.")]
     public Color guiTextColor = Color.white;
 
+    [Tooltip("Text color for the progress counter.")]
+    public Color progressTextColor = new Color(0f, 1f, 0f, 1f); // Green by default
+
     // --- Private instance variables ---
     private GameObject visualizerInstance;
     private Renderer visualizerRenderer;
     private GUIStyle objectiveNameStyle;
     private GUIStyle objectiveDescriptionStyle;
+    private GUIStyle progressStyle;
     private GUIStyle backgroundStyle;
 
     void Start()
@@ -100,6 +107,13 @@ public class ObjectiveManager : MonoBehaviour
         objectiveDescriptionStyle.alignment = TextAnchor.UpperLeft;
         objectiveDescriptionStyle.wordWrap = true;
 
+        progressStyle = new GUIStyle();
+        progressStyle.fontSize = progressFontSize;
+        progressStyle.normal.textColor = progressTextColor;
+        progressStyle.fontStyle = FontStyle.Bold;
+        progressStyle.alignment = TextAnchor.UpperLeft;
+        progressStyle.wordWrap = false;
+
         backgroundStyle = new GUIStyle();
         backgroundStyle.normal.background = CreateColorTexture(guiBackgroundColor);
     }
@@ -128,21 +142,48 @@ public class ObjectiveManager : MonoBehaviour
         float nameHeight = objectiveNameStyle.CalcHeight(nameContent, maxWidth);
         float descHeight = objectiveDescriptionStyle.CalcHeight(descContent, maxWidth);
 
+        // Calculate progress height if needed
+        float progressHeight = 0f;
+        GUIContent progressContent = null;
+        if (currentObjective.hasProgressCounter)
+        {
+            progressContent = new GUIContent("Progress: " + currentObjective.GetProgressText());
+            progressHeight = progressStyle.CalcHeight(progressContent, maxWidth);
+        }
+
         // Calculate total box dimensions
         float totalWidth = maxWidth + (padding * 2);
         float totalHeight = nameHeight + descHeight + lineSpacing + (padding * 2);
+        
+        // Add progress height if we have a counter
+        if (currentObjective.hasProgressCounter)
+        {
+            totalHeight += progressHeight + lineSpacing;
+        }
 
         // Draw background box
         Rect backgroundRect = new Rect(10, 10, totalWidth, totalHeight);
         GUI.Box(backgroundRect, "", backgroundStyle);
 
+        float currentY = 10 + padding;
+
         // Draw objective name
-        Rect nameRect = new Rect(10 + padding, 10 + padding, maxWidth, nameHeight);
+        Rect nameRect = new Rect(10 + padding, currentY, maxWidth, nameHeight);
         GUI.Label(nameRect, nameContent, objectiveNameStyle);
+        currentY += nameHeight + lineSpacing;
 
         // Draw objective description
-        Rect descRect = new Rect(10 + padding, 10 + padding + nameHeight + lineSpacing, maxWidth, descHeight);
+        Rect descRect = new Rect(10 + padding, currentY, maxWidth, descHeight);
         GUI.Label(descRect, descContent, objectiveDescriptionStyle);
+        currentY += descHeight;
+
+        // Draw progress if applicable
+        if (currentObjective.hasProgressCounter && progressContent != null)
+        {
+            currentY += lineSpacing;
+            Rect progressRect = new Rect(10 + padding, currentY, maxWidth, progressHeight);
+            GUI.Label(progressRect, progressContent, progressStyle);
+        }
     }
 
     void Update()
@@ -254,5 +295,72 @@ public class ObjectiveManager : MonoBehaviour
         }
 
         directionIndicator.rectTransform.position = new Vector3(clampedX, clampedY, 0);
+    }
+
+    /// <summary>
+    /// Updates the progress of the current objective
+    /// </summary>
+    /// <param name="incrementBy">Amount to increment progress by (default: 1)</param>
+    public void UpdateObjectiveProgress(int incrementBy = 1)
+    {
+        if (currentObjective != null && currentObjective.hasProgressCounter)
+        {
+            for (int i = 0; i < incrementBy; i++)
+            {
+                currentObjective.IncrementProgress();
+            }
+            
+            // Check if objective is complete
+            if (currentObjective.IsComplete())
+            {
+                Debug.Log($"Objective '{currentObjective.objectiveName}' completed! ({currentObjective.GetProgressText()})");
+                // You can add completion logic here (e.g., play sound, show notification, etc.)
+            }
+            else
+            {
+                Debug.Log($"Objective progress updated: {currentObjective.GetProgressText()}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sets the progress of the current objective to a specific value
+    /// </summary>
+    /// <param name="count">The progress count to set</param>
+    public void SetObjectiveProgress(int count)
+    {
+        if (currentObjective != null && currentObjective.hasProgressCounter)
+        {
+            currentObjective.SetProgress(count);
+            
+            // Check if objective is complete
+            if (currentObjective.IsComplete())
+            {
+                Debug.Log($"Objective '{currentObjective.objectiveName}' completed! ({currentObjective.GetProgressText()})");
+            }
+            else
+            {
+                Debug.Log($"Objective progress set to: {currentObjective.GetProgressText()}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the singleton instance of ObjectiveManager (if it exists)
+    /// </summary>
+    public static ObjectiveManager Instance { get; private set; }
+
+    void Awake()
+    {
+        // Simple singleton pattern
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else if (Instance != this)
+        {
+            Debug.LogWarning("Multiple ObjectiveManager instances found. Destroying duplicate.");
+            Destroy(gameObject);
+        }
     }
 }
