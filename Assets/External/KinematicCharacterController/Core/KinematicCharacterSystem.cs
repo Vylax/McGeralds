@@ -173,7 +173,7 @@ namespace KinematicCharacterController
 
                 mover.Transform.SetPositionAndRotation(mover.TransientPosition, mover.TransientRotation);
                 mover.Rigidbody.position = mover.TransientPosition;
-                mover.Rigidbody.rotation = mover.TransientRotation;
+                mover.Rigidbody.rotation = mover.TransientRotation.normalized;
             }
         }
 
@@ -205,7 +205,7 @@ namespace KinematicCharacterController
 
                 mover.Transform.SetPositionAndRotation(mover.TransientPosition, mover.TransientRotation);
                 mover.Rigidbody.position = mover.TransientPosition;
-                mover.Rigidbody.rotation = mover.TransientRotation;
+                mover.Rigidbody.rotation = mover.TransientRotation.normalized;
             }
 
             // Character controller update phase 2 and move
@@ -243,15 +243,15 @@ namespace KinematicCharacterController
                 if (mover.MoveWithPhysics)
                 {
                     mover.Rigidbody.position = mover.InitialTickPosition;
-                    mover.Rigidbody.rotation = mover.InitialTickRotation;
+                    mover.Rigidbody.rotation = mover.InitialTickRotation.normalized;
 
                     mover.Rigidbody.MovePosition(mover.TransientPosition);
-                    mover.Rigidbody.MoveRotation(mover.TransientRotation);
+                    mover.Rigidbody.MoveRotation(mover.TransientRotation.normalized);
                 }
                 else
                 {
                     mover.Rigidbody.position = (mover.TransientPosition);
-                    mover.Rigidbody.rotation = (mover.TransientRotation);
+                    mover.Rigidbody.rotation = (mover.TransientRotation.normalized);
                 }
             }
         }

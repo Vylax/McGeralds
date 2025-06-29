@@ -38,6 +38,10 @@ namespace KinematicCharacterController.Examples
         public float ObstructionSharpness = 10000f;
         public List<Collider> IgnoredColliders = new List<Collider>();
 
+        // Add rotation control
+        [Header("Rotation Control")]
+        public bool CanRotate = true;
+
         public Transform Transform { get; private set; }
         public Transform FollowTransform { get; private set; }
 
@@ -54,6 +58,12 @@ namespace KinematicCharacterController.Examples
         private Vector3 _currentFollowPosition;
 
         private const int MaxObstructions = 32;
+
+        // Add method to control rotation
+        public void SetRotationEnabled(bool enabled)
+        {
+            CanRotate = enabled;
+        }
 
         void OnValidate()
         {
@@ -85,28 +95,37 @@ namespace KinematicCharacterController.Examples
         {
             if (FollowTransform)
             {
-                if (InvertX)
+                // Only process rotation input if rotation is enabled
+                if (CanRotate)
                 {
-                    rotationInput.x *= -1f;
+                    if (InvertX)
+                    {
+                        rotationInput.x *= -1f;
+                    }
+                    if (InvertY)
+                    {
+                        rotationInput.y *= -1f;
+                    }
+
+                    // Process rotation input
+                    Quaternion rotationFromInput = Quaternion.Euler(FollowTransform.up * (rotationInput.x * RotationSpeed));
+                    PlanarDirection = rotationFromInput * PlanarDirection;
+                    PlanarDirection = Vector3.Cross(FollowTransform.up, Vector3.Cross(PlanarDirection, FollowTransform.up));
+                    Quaternion planarRot = Quaternion.LookRotation(PlanarDirection, FollowTransform.up);
+
+                    _targetVerticalAngle -= (rotationInput.y * RotationSpeed);
+                    _targetVerticalAngle = Mathf.Clamp(_targetVerticalAngle, MinVerticalAngle, MaxVerticalAngle);
+                    Quaternion verticalRot = Quaternion.Euler(_targetVerticalAngle, 0, 0);
+                    Quaternion targetRotation = Quaternion.Slerp(Transform.rotation, planarRot * verticalRot, 1f - Mathf.Exp(-RotationSharpness * deltaTime));
+
+                    // Apply rotation
+                    Transform.rotation = targetRotation;
                 }
-                if (InvertY)
+                else
                 {
-                    rotationInput.y *= -1f;
+                    // When rotation is disabled, maintain current rotation
+                    Quaternion currentRotation = Transform.rotation;
                 }
-
-                // Process rotation input
-                Quaternion rotationFromInput = Quaternion.Euler(FollowTransform.up * (rotationInput.x * RotationSpeed));
-                PlanarDirection = rotationFromInput * PlanarDirection;
-                PlanarDirection = Vector3.Cross(FollowTransform.up, Vector3.Cross(PlanarDirection, FollowTransform.up));
-                Quaternion planarRot = Quaternion.LookRotation(PlanarDirection, FollowTransform.up);
-
-                _targetVerticalAngle -= (rotationInput.y * RotationSpeed);
-                _targetVerticalAngle = Mathf.Clamp(_targetVerticalAngle, MinVerticalAngle, MaxVerticalAngle);
-                Quaternion verticalRot = Quaternion.Euler(_targetVerticalAngle, 0, 0);
-                Quaternion targetRotation = Quaternion.Slerp(Transform.rotation, planarRot * verticalRot, 1f - Mathf.Exp(-RotationSharpness * deltaTime));
-
-                // Apply rotation
-                Transform.rotation = targetRotation;
 
                 // Process distance input
                 if (_distanceIsObstructed && Mathf.Abs(zoomInput) > 0f)
@@ -165,7 +184,7 @@ namespace KinematicCharacterController.Examples
                 }
 
                 // Find the smoothed camera orbit position
-                Vector3 targetPosition = _currentFollowPosition - ((targetRotation * Vector3.forward) * _currentDistance);
+                Vector3 targetPosition = _currentFollowPosition - ((Transform.rotation * Vector3.forward) * _currentDistance);
 
                 // Handle framing
                 targetPosition += Transform.right * FollowPointFraming.x;
